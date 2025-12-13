@@ -1,0 +1,16 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+
+remappings = [
+    # MAPPING 1: For @chainlink/contracts/
+    # This maps the import alias directly to the folder name in /lib.
+    "@chainlink/contracts/=lib/chainlink-brownie-contracts/",
+    
+    # MAPPING 2: For @openzeppelin/contracts/
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/",
+    
+    # MAPPING 3: For forge-std/ (if you are using the default Forge setup)
+    "forge-std/=lib/forge-std/src/",
+]
