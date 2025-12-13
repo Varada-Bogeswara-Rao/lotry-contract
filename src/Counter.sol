@@ -5,13 +5,20 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 contract LotteryProtocol is Ownable, ReentrancyGuard {
+    // ...
+    event LotteryStarted(uint256 indexed roundId);
+    event PlayerEntered(uint256 indexed roundId, address indexed player);
+    event WinnerPicked(uint256 indexed roundId, address indexed winner, uint256 prize);
 
     /*//////////////////////////////////////////////////////////////
-                                STORAGE
+                                    STORAGE
     //////////////////////////////////////////////////////////////*/
 
     address payable[] public players;
     address payable public recentWinner;
+    
+    // NEW: Mapping to track if an address has entered the current round
+    mapping(address => bool) public enteredThisRound;
 
     uint256 public constant ENTRY_FEE = 0.01 ether;
 
@@ -23,16 +30,10 @@ contract LotteryProtocol is Ownable, ReentrancyGuard {
     enum LOTTERY_STATE { OPEN, CLOSED }
     LOTTERY_STATE public lotteryState;
 
-    /*//////////////////////////////////////////////////////////////
-                                EVENTS
-    //////////////////////////////////////////////////////////////*/
-
-    event LotteryStarted(uint256 indexed roundId);
-    event PlayerEntered(uint256 indexed roundId, address indexed player);
-    event WinnerPicked(uint256 indexed roundId, address indexed winner, uint256 prize);
+    // ... (EVENTS) ...
 
     /*//////////////////////////////////////////////////////////////
-                              CONSTRUCTOR
+                                  CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
     constructor(
@@ -50,7 +51,7 @@ contract LotteryProtocol is Ownable, ReentrancyGuard {
     }
 
     /*//////////////////////////////////////////////////////////////
-                           LOTTERY CONTROL
+                               LOTTERY CONTROL
     //////////////////////////////////////////////////////////////*/
 
     function startLottery() external onlyOwner {
@@ -66,8 +67,10 @@ contract LotteryProtocol is Ownable, ReentrancyGuard {
         require(lotteryState == LOTTERY_STATE.OPEN, "Lottery not open");
         require(msg.value == ENTRY_FEE, "Incorrect ETH amount");
         require(players.length < maxPlayers, "Lottery full");
+        require(!enteredThisRound[msg.sender], "Player already entered this round"); // <-- NEW CHECK
 
         players.push(payable(msg.sender));
+        enteredThisRound[msg.sender] = true; // <-- NEW WRITE
 
         emit PlayerEntered(currentRound, msg.sender);
     }
@@ -77,7 +80,7 @@ contract LotteryProtocol is Ownable, ReentrancyGuard {
         require(players.length >= minPlayers, "Not enough players");
 
         /*//////////////////////////////////////////////////////////////
-                              RANDOMNESS (PSEUDO)
+                                      RANDOMNESS (PSEUDO)
         //////////////////////////////////////////////////////////////*/
 
         uint256 random = uint256(
@@ -97,14 +100,15 @@ contract LotteryProtocol is Ownable, ReentrancyGuard {
         uint256 prize = address(this).balance;
 
         /*//////////////////////////////////////////////////////////////
-                             EFFECTS
+                                     EFFECTS
         //////////////////////////////////////////////////////////////*/
 
         delete players;
+        
         lotteryState = LOTTERY_STATE.CLOSED;
 
         /*//////////////////////////////////////////////////////////////
-                           INTERACTIONS
+                                   INTERACTIONS
         //////////////////////////////////////////////////////////////*/
 
         (bool success, ) = recentWinner.call{value: prize}("");
@@ -114,8 +118,13 @@ contract LotteryProtocol is Ownable, ReentrancyGuard {
     }
 
     /*//////////////////////////////////////////////////////////////
-                           VIEW HELPERS
+                               VIEW HELPERS
     //////////////////////////////////////////////////////////////*/
+    
+    // NEW: View function to check if the caller has entered
+    function hasEntered() external view returns (bool) {
+        return enteredThisRound[msg.sender];
+    }
 
     function getPlayersCount() external view returns (uint256) {
         return players.length;
