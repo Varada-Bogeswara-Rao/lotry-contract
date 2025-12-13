@@ -12,3 +12,14 @@ docs/
 
 # Dotenv file
 .env
+# ---------------------------------
+# CONTRACT DEVELOPMENT (Foundry/Hardhat)
+# ---------------------------------
+
+# Foundry/Hardhat broadcast logs (sensitive transaction data)
+# This is the directory you see in the screenshot:
+broadcast/
+
+# Cache directories
+cache/
+out/
